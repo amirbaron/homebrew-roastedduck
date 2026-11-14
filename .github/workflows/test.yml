@@ -1,5 +1,5 @@
 name: Install and test published package
-on: [push, pull_request, workflow_dispatch]
+on: [pull_request, workflow_dispatch]
 permissions:
   contents: read
 jobs:
@@ -25,7 +25,8 @@ jobs:
           HOMEBREW_NO_AUTO_UPDATE: '1'
           HOMEBREW_NO_ANALYTICS: '1'
         run: |
-          brew bottle --json --no-rebuild --root-url=https://github.com/amirbaron/homebrew-roastedduck/releases/download/v1.5.6.post3 amirbaron/roastedduck/roastedduck
+          release_version="$(brew info --json=v2 amirbaron/roastedduck/roastedduck | python3 -c 'import json,sys; print(json.load(sys.stdin)["formulae"][0]["installed"][0]["version"])')"
+          brew bottle --json --no-rebuild --root-url="https://github.com/amirbaron/homebrew-roastedduck/releases/download/v${release_version}" amirbaron/roastedduck/roastedduck
           brew uninstall roastedduck
           brew install --force-bottle ./roastedduck--*.bottle.tar.gz
           brew test amirbaron/roastedduck/roastedduck
