@@ -1,0 +1,38 @@
+name: Install and test published package
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-26, ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Homebrew/actions/setup-homebrew@ceec4e8419bb3c97ce96e9dda7738499ed5f869d
+      - name: Install and test
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: '1'
+          HOMEBREW_NO_ANALYTICS: '1'
+        run: |
+          brew install --build-bottle amirbaron/roastedduck/roastedduck
+          brew test amirbaron/roastedduck/roastedduck
+          roastedduck -batch -bail -init /dev/null :memory: -c 'SELECT 42;'
+      - name: Bottle and verify the installed package
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: '1'
+          HOMEBREW_NO_ANALYTICS: '1'
+        run: |
+          brew bottle --json --no-rebuild --root-url=https://github.com/amirbaron/homebrew-roastedduck/releases/download/v1.5.6.post3 amirbaron/roastedduck/roastedduck
+          brew uninstall roastedduck
+          brew install --force-bottle ./roastedduck--*.bottle.tar.gz
+          brew test amirbaron/roastedduck/roastedduck
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bottle-${{ matrix.os }}
+          path: |
+            *.bottle.tar.gz
+            *.bottle.json
+          if-no-files-found: error
