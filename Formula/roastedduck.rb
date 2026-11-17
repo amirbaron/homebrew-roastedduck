@@ -1,33 +1,26 @@
 require "shellwords"
 
 class Roastedduck < Formula
-  desc "Analytical SQL engine in Rust with bundled compatible FTS and VSS"
+  desc "Analytical SQL engine in Rust with bundled DuckDB-compatible extensions"
   homepage "https://amirbaron.github.io/roastedDuck/"
-  version "1.5.6.post3"
+  version "1.5.6.post4"
   license "MIT"
-
-  bottle do
-    root_url "https://github.com/amirbaron/homebrew-roastedduck/releases/download/v1.5.6.post3"
-    sha256 cellar: :any_skip_relocation, arm64_linux: "edd827f16be25cd523459db1c03f7ec912bb3f6ad206fca4d0879405c7224740"
-    sha256 cellar: :any_skip_relocation, arm64_tahoe: "e15e2f611eb2a399d8e149ae6a6c6bb03d132024f6dfa7551c055da40fc43af7"
-    sha256 cellar: :any_skip_relocation, x86_64_linux: "fbd27b6480098a154241a847f3cb97225c4c9bb6d7ecd4e8011d82e3ae7effc3"
-  end
 
   on_macos do
     depends_on arch: :arm64
     depends_on macos: :big_sur
-    url "https://github.com/amirbaron/roastedDuck/releases/download/v1.5.6.post3/roastedduck-1.5.6.post3-macos-arm64.tar.gz"
-    sha256 "18b694f120040117fc94923c14ec154336e65396b2e727aedf19e222b8d36784"
+    url "https://github.com/amirbaron/roastedDuck/releases/download/v1.5.6.post4/roastedduck-1.5.6.post4-macos-arm64.tar.gz"
+    sha256 "4c2b65d147d394f1532edc87c14fe3e1853760f88d8370232153424f2756cd09"
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/amirbaron/roastedDuck/releases/download/v1.5.6.post3/roastedduck-1.5.6.post3-linux-arm64.tar.gz"
-      sha256 "6ff4efccb6b63fa407f2e7ba5b0fe122cb6d22d7d75fd840d3b35673f88fbb2f"
+      url "https://github.com/amirbaron/roastedDuck/releases/download/v1.5.6.post4/roastedduck-1.5.6.post4-linux-arm64.tar.gz"
+      sha256 "19293a5c096d6ce772ad5708db47cc26fbfc60269756968670794a13bc7c08aa"
     end
     on_intel do
-      url "https://github.com/amirbaron/roastedDuck/releases/download/v1.5.6.post3/roastedduck-1.5.6.post3-linux-amd64.tar.gz"
-      sha256 "e4be73b23339267f95d29d1f9f9ad41a1373317df5beb0e44604dd716c554122"
+      url "https://github.com/amirbaron/roastedDuck/releases/download/v1.5.6.post4/roastedduck-1.5.6.post4-linux-amd64.tar.gz"
+      sha256 "479519e670184da49e4f8b640b3bd65c542a8551c2f767da4d81ca155563be43"
     end
   end
 
@@ -39,7 +32,8 @@ class Roastedduck < Formula
 
   def caveats
     <<~EOS
-      FTS and VSS are bundled. Start with LOAD fts; and LOAD vss;.
+      httpfs, aws, azure, icu, postgres_scanner, fts and vss are bundled.
+      Load them by name, for example LOAD httpfs; or LOAD postgres;.
       HNSW indexes currently require an in-memory database.
       This preview targets DuckDB 1.5.6. It is independently maintained.
     EOS
@@ -62,10 +56,25 @@ class Roastedduck < Formula
       CREATE INDEX h ON vectors USING HNSW(v);
       SELECT CASE WHEN id=1 THEN 'vss-ok' ELSE error('VSS failure') END FROM (SELECT id FROM vectors ORDER BY array_distance(v,[1,0,0]::FLOAT[3]) LIMIT 1);
       EXPLAIN SELECT id FROM vectors ORDER BY array_distance(v,[1,0,0]::FLOAT[3]) LIMIT 1;
+      INSTALL httpfs;
+      LOAD httpfs;
+      LOAD aws;
+      LOAD azure;
+      LOAD icu;
+      LOAD postgres_scanner;
+      SELECT CASE WHEN count(*)=5 THEN 'extensions-ok' ELSE error('extension load failure') END FROM duckdb_extensions() WHERE loaded AND extension_name IN ('httpfs','aws','azure','icu','postgres_scanner');
+      SELECT CASE WHEN 'a' COLLATE en < 'B' AND (TIMESTAMPTZ '2024-01-01 00:00:00+00' AT TIME ZONE 'Asia/Tokyo')::VARCHAR = '2024-01-01 09:00:00' THEN 'icu-ok' ELSE error('ICU failure') END;
+      CREATE SECRET brew_s3 (TYPE s3, KEY_ID 'test', SECRET 'test', REGION 'eu-west-1');
+      SELECT CASE WHEN count(*)=1 THEN 'secret-ok' ELSE error('secret failure') END FROM duckdb_secrets() WHERE name='brew_s3' AND type='s3';
+      SELECT CASE WHEN count(*)>0 THEN 'postgres-ok' ELSE error('postgres failure') END FROM duckdb_functions() WHERE function_name='postgres_scan';
     SQL
     output = pipe_output("#{bin}/roastedduck".shellescape + " -batch -bail -init /dev/null :memory:", sql, 0)
     assert_match "fts-ok", output
     assert_match "vss-ok", output
     assert_match "HNSW_INDEX_SCAN", output
+    assert_match "extensions-ok", output
+    assert_match "icu-ok", output
+    assert_match "secret-ok", output
+    assert_match "postgres-ok", output
   end
 end

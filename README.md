@@ -1,6 +1,7 @@
 # roastedDuck Homebrew tap
 
-Install the independently maintained Rust engine with bundled compatible FTS/VSS:
+Install the independently maintained Rust engine with its bundled implementations of
+DuckDB's httpfs, aws, azure, icu, postgres_scanner, fts and vss extensions:
 
 ```sh
 brew install amirbaron/roastedduck/roastedduck
@@ -10,8 +11,9 @@ roastedduck
 Then load the implementations you need:
 
 ```sql
+LOAD httpfs;
+LOAD postgres;
 LOAD fts;
-LOAD vss;
 ```
 
 No separate extension packages or binary downloads are required. HNSW indexes
