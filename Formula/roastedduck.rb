@@ -6,6 +6,13 @@ class Roastedduck < Formula
   version "1.5.6.post6"
   license "MIT"
 
+  bottle do
+    root_url "https://github.com/amirbaron/homebrew-roastedduck/releases/download/v1.5.6.post6"
+    sha256 cellar: :any_skip_relocation, arm64_linux: "d04a7afc74381a62f5fb8a1fdd72a0d9d28eda860aef8fd096de56c24d295781"
+    sha256 cellar: :any_skip_relocation, arm64_tahoe: "54a0bf81ebe88b5adddc45f139596699ad048e65fc51c7b0ac770620badbb060"
+    sha256 cellar: :any_skip_relocation, x86_64_linux: "af50a571cccd2be1ebcf5a530a0f3de16fd1049c248909b1fe517c55f161e3e2"
+  end
+
   on_macos do
     depends_on arch: :arm64
     depends_on macos: :big_sur
