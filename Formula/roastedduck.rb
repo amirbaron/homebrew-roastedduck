@@ -3,31 +3,24 @@ require "shellwords"
 class Roastedduck < Formula
   desc "Analytical SQL engine in Rust with bundled DuckDB-compatible extensions"
   homepage "https://amirbaron.github.io/roastedDuck/"
-  version "1.5.6.post4"
+  version "1.5.6.post6"
   license "MIT"
-
-  bottle do
-    root_url "https://github.com/amirbaron/homebrew-roastedduck/releases/download/v1.5.6.post4"
-    sha256 cellar: :any_skip_relocation, arm64_linux: "5c67f24df8c899267d64af6d9bc132418f4aeb8cced2cd08c7111ab92f740988"
-    sha256 cellar: :any_skip_relocation, arm64_tahoe: "76db48a14a87b0c276281c63c159cba5f46f72256a11e303a001cbfef358b7a0"
-    sha256 cellar: :any_skip_relocation, x86_64_linux: "ac4ddf3e00101ac51745bef055b2db2815f1614f3e1db15f543ef050c4ae45db"
-  end
 
   on_macos do
     depends_on arch: :arm64
     depends_on macos: :big_sur
-    url "https://github.com/amirbaron/roastedDuck/releases/download/v1.5.6.post4/roastedduck-1.5.6.post4-macos-arm64.tar.gz"
-    sha256 "4c2b65d147d394f1532edc87c14fe3e1853760f88d8370232153424f2756cd09"
+    url "https://github.com/amirbaron/roastedDuck/releases/download/v1.5.6.post6/roastedduck-1.5.6.post6-macos-arm64.tar.gz"
+    sha256 "30c10bf9ddcb50e4bfe14a1dd50acb3083008a921bbfa4ac9a601809542db8db"
   end
 
   on_linux do
     on_arm do
-      url "https://github.com/amirbaron/roastedDuck/releases/download/v1.5.6.post4/roastedduck-1.5.6.post4-linux-arm64.tar.gz"
-      sha256 "19293a5c096d6ce772ad5708db47cc26fbfc60269756968670794a13bc7c08aa"
+      url "https://github.com/amirbaron/roastedDuck/releases/download/v1.5.6.post6/roastedduck-1.5.6.post6-linux-arm64.tar.gz"
+      sha256 "94207cdb465fe2ca516339bff7dab007726c6361e7315d43a3918ba9db6434f0"
     end
     on_intel do
-      url "https://github.com/amirbaron/roastedDuck/releases/download/v1.5.6.post4/roastedduck-1.5.6.post4-linux-amd64.tar.gz"
-      sha256 "479519e670184da49e4f8b640b3bd65c542a8551c2f767da4d81ca155563be43"
+      url "https://github.com/amirbaron/roastedDuck/releases/download/v1.5.6.post6/roastedduck-1.5.6.post6-linux-amd64.tar.gz"
+      sha256 "07fb1daa2b05dc9078ccc7ab3e20f7eb462a1763157fe800ff23a8dfccf5f2bd"
     end
   end
 
@@ -39,7 +32,7 @@ class Roastedduck < Formula
 
   def caveats
     <<~EOS
-      httpfs, aws, azure, icu, postgres_scanner, fts and vss are bundled.
+      httpfs, aws, azure, icu, postgres_scanner, fts, vss, excel and avro are bundled.
       Load them by name, for example LOAD httpfs; or LOAD postgres;.
       HNSW indexes currently require an in-memory database.
       This preview targets DuckDB 1.5.6. It is independently maintained.
@@ -63,12 +56,21 @@ class Roastedduck < Formula
       CREATE INDEX h ON vectors USING HNSW(v);
       SELECT CASE WHEN id=1 THEN 'vss-ok' ELSE error('VSS failure') END FROM (SELECT id FROM vectors ORDER BY array_distance(v,[1,0,0]::FLOAT[3]) LIMIT 1);
       EXPLAIN SELECT id FROM vectors ORDER BY array_distance(v,[1,0,0]::FLOAT[3]) LIMIT 1;
+      INSTALL avro;
+      LOAD avro;
+      COPY (SELECT 42 AS value) TO '#{testpath}/smoke.avro' (FORMAT AVRO);
+      SELECT CASE WHEN value=42 THEN 'avro-ok' ELSE error('Avro failure') END FROM read_avro('#{testpath}/smoke.avro');
       INSTALL httpfs;
       LOAD httpfs;
       LOAD aws;
       LOAD azure;
       LOAD icu;
       LOAD postgres_scanner;
+      INSTALL excel;
+      LOAD excel;
+      COPY (SELECT 42 AS id) TO 'brew-test.xlsx' (FORMAT XLSX, HEADER true);
+      SELECT CASE WHEN max(id)=42 AND count(*)=1 AND excel_text(1234.5, '#,##0.00')='1,234.50'
+        THEN 'excel-ok' ELSE error('Excel failure') END FROM 'brew-test.xlsx';
       SELECT CASE WHEN count(*)=5 THEN 'extensions-ok' ELSE error('extension load failure') END FROM duckdb_extensions() WHERE loaded AND extension_name IN ('httpfs','aws','azure','icu','postgres_scanner');
       SELECT CASE WHEN 'a' COLLATE en < 'B' AND (TIMESTAMPTZ '2024-01-01 00:00:00+00' AT TIME ZONE 'Asia/Tokyo')::VARCHAR = '2024-01-01 09:00:00' THEN 'icu-ok' ELSE error('ICU failure') END;
       CREATE SECRET brew_s3 (TYPE s3, KEY_ID 'test', SECRET 'test', REGION 'eu-west-1');
@@ -78,10 +80,12 @@ class Roastedduck < Formula
     output = pipe_output("#{bin}/roastedduck".shellescape + " -batch -bail -init /dev/null :memory:", sql, 0)
     assert_match "fts-ok", output
     assert_match "vss-ok", output
+    assert_match "avro-ok", output
     assert_match "HNSW_INDEX_SCAN", output
     assert_match "extensions-ok", output
     assert_match "icu-ok", output
     assert_match "secret-ok", output
     assert_match "postgres-ok", output
+    assert_match "excel-ok", output
   end
 end
